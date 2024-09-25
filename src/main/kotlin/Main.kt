@@ -5,6 +5,7 @@ import java.io.BufferedWriter
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.math.round
 
 fun main(){
     val fileCotizaciones = Path.of("src/main/resources/cotizacion.csv")
@@ -21,39 +22,44 @@ fun main(){
 fun leerCotizaciones(br: BufferedReader): Map<String, List<String>>{
     val diccionario = mutableMapOf<String, MutableList<String>>()
 
-    br.use { it.forEachLine {linea ->
-        val lineaSplit = linea.split(";")
+    br.use { reader ->
+        val cabeceras = reader.readLine().split(";")
 
-        for (datos in lineaSplit){
-            diccionario[datos] = mutableListOf()
+        for (nombre in cabeceras){
+            diccionario[nombre] = mutableListOf()
         }
 
-
-        for (i in lineaSplit.indices){
-            diccionario[lineaSplit[i]]?.add(lineaSplit[i])
+        reader.forEachLine { linea ->
+            val datos = linea.split(";")
+            for (i in datos.indices){
+                diccionario[cabeceras[i]]?.add(datos[i])
         }
     }
-
-
     }
 
     return diccionario
 }
 
-fun crearFicheroMedia(cotizaciones: Map<String, List<String>>,bw: BufferedWriter) {
+fun crearFicheroMedia(cotizaciones: Map<String, List<String>>, bw: BufferedWriter) {
     val estadisticas = mutableMapOf<String, Triple<Double, Double, Double>>()
 
     bw.use {
-        for ((nombre, datos) in cotizaciones){
-            val valores = datos.map { it.replace(",", ".").toDouble() }
-            val minimo: Double = valores.min()
-            val maximo: Double = valores.max()
-            val media: Double = valores.average()
 
-            estadisticas[nombre] = Triple(minimo, maximo, media)
+            for ((nombre, datos) in cotizaciones){
+                try {
+                    val valores = datos.map { it.replace(".", "").replace(",", ".").toDouble() }
+                    val minimo: Double = valores.minOrNull() ?: 0.0
+                    val maximo: Double = valores.maxOrNull() ?: 0.0
+                    val media: Double = round(valores.average() * 100 ) / 100
+
+                    estadisticas[nombre] = Triple(minimo, maximo, media)
+                }catch (_: Exception){}
+            }
+
+        it.write("Columna,Mínimo,Máximo,Media\n")
+        for ((nombre, datos) in estadisticas){
+            it.write("${nombre},${datos.first},${datos.second},${datos.third}\n")
         }
-
-        estadisticas.forEach { linea -> it.write(linea.toString())  }
     }
 
 }
